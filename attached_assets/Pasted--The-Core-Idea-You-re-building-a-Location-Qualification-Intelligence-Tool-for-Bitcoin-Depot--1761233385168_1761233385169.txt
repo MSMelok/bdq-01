@@ -1,0 +1,107 @@
+🧠 The Core Idea
+
+You’re building a Location Qualification & Intelligence Tool for Bitcoin Depot (BD) — a simple, smart web app that helps you instantly determine if a specific retail location is qualified to host a Bitcoin ATM (BTM).
+
+As an SDR (Sales Development Representative) or site scout, your goal is to identify which stores are worth contacting and pitching for BTM placement. Right now, you and your colleagues do that manually — by checking each address on Google Maps, looking up population density on sites like UnitedStatesZipCodes.org, checking for nearby BD or competitor BTMs, confirming business type, and ensuring store hours match BD’s requirements.
+This process is slow, repetitive, and prone to error.
+
+This app automates all of that.
+
+💻 The Application — Overview
+
+It’s a lightweight web application (HTML, CSS, and Vanilla JS at first) that runs locally or online and does everything you do manually, but faster and more accurately.
+
+🧩 The Process — Step by Step
+
+When you paste an address (e.g. “3136 Trawood Dr Suite 7.8, El Paso, TX 79936”), the app will:
+
+1. Geocode the Address
+
+It finds:
+
+The exact location (latitude & longitude)
+
+The ZIP code
+
+The business name
+
+This is done through a Geocoding API — use Google Maps API since BD’s entire team already works within Google Maps’ ecosystem.
+
+2. Check Population Density (ZIP-level)
+
+The app verifies if the ZIP code meets BD’s minimum population density requirement (will be set in the settings cog).
+
+It can get this data from US  Census Bureau API, (535b5511899e2256fe179966adc31e2591c6aea2).
+
+3. Check Nearby BTMs within 1 mile radues (Radius Search)
+
+Next, it looks within 1 mile radues of that location to find:
+
+Any existing Bitcoin Depot ATM (if yes → not qualified)
+
+Any competitor Bitcoin ATMs, and how many for each competitor
+
+
+So, for example:
+
+Within 1 mile:
+
+Bitcoin Depot ATMs: 0
+
+Competitor ATMs: 4 (2 CoinFlip, 1 RockItCoin, 1 CoinCloud)
+✅ Qualified for placement
+
+4. Business Qualification
+
+The app then checks the type of business, which it can automatically detect from Google Maps data.
+If it belongs to one of the following tiers:
+
+Tier 1 ($300):
+Supermarkets
+Grocery Stores
+Convenience Stores
+
+Tier 2 ($200):
+Hispanic Markets
+Smoke shop (this does not include dispensaries/cannabis stores)
+Liquor store
+Wireless stores (cell phone repair stores as well)
+Check cashing
+Currency exchange/money transfer
+Pawn shops
+Dollar/discount stores
+Casinos
+Pharmacies
+Hotel
+Gun stores
+Jewelry stores
+Local malls
+Fast food, deli/cafes, and fast casual restaurants (no sit-down restaurants; you must order directly from the cashier)
+Laundromat
+Auto and hardware stores
+Sporting goods stores
+Bowling alleys
+Large thrift stores
+Local Shipping stores. Ie, local version of ups
+Local sneaker store
+auto supply store
+bingo hall
+
+✅ It’s considered a valid target.
+
+Otherwise:
+❌ Automatically rejected.
+
+5. Store Hours Check
+
+The app verifies if the business is open:
+
+At least 5 days a week (Mon–Fri)
+
+For 9 hours/day minimum
+
+If yes → ✅ Meets BD requirements.
+If no → ❌ Not qualified.
+
+Google Maps API "AIzaSyApCw7BD3IhGJYt8zMLzMX9uiY37VppcH0"
+ Census Bureau API "535b5511899e2256fe179966adc31e2591c6aea2"	
