@@ -165,8 +165,22 @@ export class QualificationService {
   }
 
   private parseTime(timeStr: string): number | null {
-    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (!match) return null;
+    const trimmed = timeStr.trim();
+
+    const match = trimmed.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) {
+      const simpleMatch = trimmed.match(/(\d{1,2})\s*(AM|PM)/i);
+      if (simpleMatch) {
+        let hours = parseInt(simpleMatch[1]);
+        const period = simpleMatch[2].toUpperCase();
+
+        if (period === "PM" && hours !== 12) hours += 12;
+        if (period === "AM" && hours === 12) hours = 0;
+
+        return hours;
+      }
+      return null;
+    }
 
     let hours = parseInt(match[1]);
     const minutes = parseInt(match[2]);

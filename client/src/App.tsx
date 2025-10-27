@@ -9,36 +9,6 @@ import { SettingsPanel } from "@/components/settings-panel";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import { SiBitcoin } from "react-icons/si";
-import { useEffect } from "react";
-
-function App() {
-  useEffect(() => {
-    // Hide all existing .badge elements
-    document.querySelectorAll('.badge').forEach(el => {
-      el.style.display = 'none';
-    });
-
-    // Optional: Observe the DOM for newly added badges and hide them too
-    const observer = new MutationObserver(() => {
-      document.querySelectorAll('.badge').forEach(el => {
-        el.style.display = 'none';
-      });
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Cleanup observer on unmount
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div>
-      {/* Your app content */}
-    </div>
-  );
-}
-
-export default App;
-
 
 function Router() {
   return (
