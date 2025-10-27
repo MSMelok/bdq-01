@@ -26,6 +26,10 @@ interface PlaceDetails {
 
 export class GoogleMapsService {
   async geocodeAddress(address: string): Promise<GeocodeResult> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      throw new Error("Google Maps API key is not configured. Please add GOOGLE_MAPS_API_KEY to your .env file.");
+    }
+
     try {
       const response = await axios.get(
         "https://maps.googleapis.com/maps/api/geocode/json",
@@ -37,8 +41,12 @@ export class GoogleMapsService {
         }
       );
 
+      if (response.data.status === "REQUEST_DENIED") {
+        throw new Error("Google Maps API key is invalid or restricted. Please check your API key configuration.");
+      }
+
       if (response.data.status !== "OK" || !response.data.results.length) {
-        throw new Error("Address not found");
+        throw new Error("Address not found. Please enter a valid address.");
       }
 
       const result = response.data.results[0];
@@ -48,21 +56,32 @@ export class GoogleMapsService {
         component.types.includes("postal_code")
       );
 
+      if (!zipCodeComponent?.long_name) {
+        throw new Error("Could not determine ZIP code from address. Please include a ZIP code in your search.");
+      }
+
       return {
         formattedAddress: result.formatted_address,
         location: {
           lat: location.lat,
           lng: location.lng,
         },
-        zipCode: zipCodeComponent?.long_name || "",
+        zipCode: zipCodeComponent.long_name,
         placeId: result.place_id,
       };
     } catch (error: any) {
-      throw new Error(error.response?.data?.error_message || "Geocoding failed");
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(error.response?.data?.error_message || "Failed to geocode address. Please try again.");
     }
   }
 
   async getPlaceDetails(placeId: string): Promise<PlaceDetails> {
+    if (!GOOGLE_MAPS_API_KEY) {
+      throw new Error("Google Maps API key is not configured");
+    }
+
     try {
       const response = await axios.get(
         "https://maps.googleapis.com/maps/api/place/details/json",
@@ -75,11 +94,15 @@ export class GoogleMapsService {
         }
       );
 
-      if (response.data.status !== "OK") {
-        throw new Error("Place details not found");
+      if (response.data.status === "REQUEST_DENIED") {
+        throw new Error("Google Maps API key is invalid or restricted");
       }
 
-      const result = response.data.result;
+      if (response.data.status !== "OK") {
+        console.warn("Place details not found, using defaults");
+      }
+
+      const result = response.data.result || {};
       return {
         name: result.name || "Unknown Business",
         types: result.types || [],
@@ -90,7 +113,11 @@ export class GoogleMapsService {
             }
           : undefined,
       };
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message?.includes("API key")) {
+        throw error;
+      }
+      console.warn("Failed to fetch place details, using defaults:", error.message);
       return {
         name: "Unknown Business",
         types: [],

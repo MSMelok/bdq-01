@@ -5,6 +5,10 @@ const CENSUS_API_KEY = process.env.CENSUS_API_KEY;
 
 export class CensusService {
   async getPopulationDensity(zipCode: string): Promise<number> {
+    if (!CENSUS_API_KEY) {
+      throw new Error("Census API key is not configured. Please add CENSUS_API_KEY to your .env file.");
+    }
+
     try {
       const populationResponse = await axios.get(
         `https://api.census.gov/data/2021/acs/acs5`,
@@ -18,12 +22,12 @@ export class CensusService {
       );
 
       if (!populationResponse.data || populationResponse.data.length < 2) {
-        throw new Error(`No population data found for ZIP code ${zipCode}`);
+        throw new Error(`No population data found for ZIP code ${zipCode}. Please verify the ZIP code is valid.`);
       }
 
       const population = parseInt(populationResponse.data[1][0]) || 0;
       if (population === 0) {
-        throw new Error(`Zero population for ZIP code ${zipCode}`);
+        throw new Error(`No population data available for ZIP code ${zipCode}`);
       }
 
       const { data: gazetteerData } = await supabase
