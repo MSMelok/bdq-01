@@ -30,7 +30,7 @@ export class CensusService {
         throw new Error(`No population data available for ZIP code ${zipCode}`);
       }
 
-      const { data: gazetteerData } = await supabase
+      const { data: gazetteerData, error: gazetteerError } = await supabase
         .from('gazetteer')
         .select('ALAND_SQMI')
         .eq('GEOID', zipCode)
@@ -38,9 +38,14 @@ export class CensusService {
 
       let landAreaSqMiles = 10.0;
 
-      if (gazetteerData?.ALAND_SQMI) {
+      if (gazetteerData?.ALAND_SQMI && gazetteerData.ALAND_SQMI > 0) {
         landAreaSqMiles = gazetteerData.ALAND_SQMI;
+        console.log(`Using gazetteer land area for ${zipCode}: ${landAreaSqMiles} sq mi`);
       } else {
+        console.warn(`No gazetteer data found for ${zipCode}, trying fallback methods`);
+        if (gazetteerError) {
+          console.error('Gazetteer query error:', gazetteerError);
+        }
         const { data: cachedData } = await supabase
           .from('zip_code_land_areas')
           .select('land_area_sq_meters')
@@ -88,6 +93,7 @@ export class CensusService {
       }
 
       const density = Math.round(population / landAreaSqMiles);
+      console.log(`Population density for ${zipCode}: ${population} people / ${landAreaSqMiles} sq mi = ${density} people/sq mi`);
       return density;
     } catch (error: any) {
       throw new Error(

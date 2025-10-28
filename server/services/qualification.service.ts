@@ -120,7 +120,7 @@ export class QualificationService {
       };
     }
 
-    const schedule = weekdayText.map((dayText, index) => {
+    const schedule = weekdayText.map((dayText) => {
       const parts = dayText.split(": ");
       const day = parts[0];
       const hours = parts[1] || "Closed";
@@ -130,12 +130,16 @@ export class QualificationService {
       if (isOpen && hours !== "Open 24 hours") {
         const timeRanges = hours.split(", ");
         for (const range of timeRanges) {
-          const times = range.split(" – ");
+          const times = range.split(/\s*[–−-]\s*/);
           if (times.length === 2) {
-            const start = this.parseTime(times[0]);
-            const end = this.parseTime(times[1]);
+            const start = this.parseTime(times[0].trim());
+            const end = this.parseTime(times[1].trim());
             if (start !== null && end !== null) {
-              hoursCount += end > start ? end - start : 24 - start + end;
+              if (end > start) {
+                hoursCount += end - start;
+              } else {
+                hoursCount += 24 - start + end;
+              }
             }
           }
         }

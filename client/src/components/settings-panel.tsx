@@ -70,12 +70,12 @@ export function SettingsPanel() {
       </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="fixed inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
           />
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-background border-l shadow-xl overflow-y-auto">
+          <div className="relative w-full max-w-md bg-background border rounded-lg shadow-xl overflow-hidden">
             <div className="p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-semibold tracking-tight">Settings</h2>

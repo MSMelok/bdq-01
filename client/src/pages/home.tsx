@@ -82,14 +82,16 @@ export default function Home() {
                 summary={result.summary}
               />
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <PopulationDensityCard data={result.populationDensity} />
+              <div className="grid gap-6 lg:grid-cols-3 md:grid-cols-2">
+                <StoreHoursCard data={result.storeHours} />
                 <BtmProximityCard
                   data={result.btmProximity}
                   radiusMiles={settings?.searchRadiusMiles ?? 1}
                 />
-                <BusinessTypeCard data={result.businessType} />
-                <StoreHoursCard data={result.storeHours} />
+                <div className="space-y-6">
+                  <PopulationDensityCard data={result.populationDensity} />
+                  <BusinessTypeCard data={result.businessType} />
+                </div>
               </div>
 
               <div className="text-center pt-8">
