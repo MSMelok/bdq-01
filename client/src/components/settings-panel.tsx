@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { Settings as SettingsIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,46 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Settings } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
-export function SettingsPanel() {
+const SettingsContext = createContext<{
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+} | null>(null);
+
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  return (
+    <SettingsContext.Provider value={{ isOpen, setIsOpen }}>
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+
+function useSettings() {
+  const context = useContext(SettingsContext);
+  if (!context) {
+    throw new Error("useSettings must be used within SettingsProvider");
+  }
+  return context;
+}
+
+export function SettingsButton() {
+  const { setIsOpen } = useSettings();
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setIsOpen(true)}
+      data-testid="button-settings-open"
+      className="rounded-lg"
+    >
+      <SettingsIcon className="h-5 w-5" />
+      <span className="sr-only">Settings</span>
+    </Button>
+  );
+}
+
+export function SettingsModal() {
+  const { isOpen, setIsOpen } = useSettings();
   const { toast } = useToast();
 
   const { data: settings } = useQuery<Settings>({
@@ -56,20 +94,9 @@ export function SettingsPanel() {
     updateSettingsMutation.mutate(formData);
   };
 
-  return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setIsOpen(true)}
-        data-testid="button-settings-open"
-        className="rounded-lg"
-      >
-        <SettingsIcon className="h-5 w-5" />
-        <span className="sr-only">Settings</span>
-      </Button>
+  if (!isOpen) return null;
 
-      {isOpen && (
+  return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="fixed inset-0 bg-background/80 backdrop-blur-sm"
@@ -151,7 +178,5 @@ export function SettingsPanel() {
             </div>
           </div>
         </div>
-      )}
-    </>
   );
 }

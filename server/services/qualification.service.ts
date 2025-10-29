@@ -120,6 +120,8 @@ export class QualificationService {
       };
     }
 
+    console.log("Parsing store hours from weekdayText:", weekdayText);
+
     const schedule = weekdayText.map((dayText) => {
       const parts = dayText.split(": ");
       const day = parts[0];
@@ -129,23 +131,36 @@ export class QualificationService {
       let hoursCount = 0;
       if (isOpen && hours !== "Open 24 hours") {
         const timeRanges = hours.split(", ");
+        console.log(`${day}: Processing time ranges:`, timeRanges);
+
         for (const range of timeRanges) {
-          const times = range.split(/\s*[–−-]\s*/);
+          const times = range.split(/\s*[–−—-]\s*/);
           if (times.length === 2) {
             const start = this.parseTime(times[0].trim());
             const end = this.parseTime(times[1].trim());
+            console.log(`  Range "${range}" -> start: ${start}, end: ${end}`);
+
             if (start !== null && end !== null) {
+              let rangeHours = 0;
               if (end > start) {
-                hoursCount += end - start;
+                rangeHours = end - start;
               } else {
-                hoursCount += 24 - start + end;
+                rangeHours = 24 - start + end;
               }
+              console.log(`  Calculated hours for this range: ${rangeHours}`);
+              hoursCount += rangeHours;
+            } else {
+              console.warn(`  Failed to parse times: start=${start}, end=${end}`);
             }
+          } else {
+            console.warn(`  Invalid range format: "${range}", split result:`, times);
           }
         }
       } else if (hours === "Open 24 hours") {
         hoursCount = 24;
       }
+
+      console.log(`${day}: Total hours = ${hoursCount}`);
 
       return {
         day,
@@ -159,6 +174,8 @@ export class QualificationService {
     const totalHours = schedule.reduce((sum, s) => sum + s.hoursCount, 0);
     const averageHoursPerDay = daysOpen > 0 ? totalHours / daysOpen : 0;
     const meetsRequirements = daysOpen >= 5 && averageHoursPerDay >= 9;
+
+    console.log(`Summary: ${daysOpen} days open, ${totalHours} total hours, ${averageHoursPerDay.toFixed(2)} avg hours/day`);
 
     return {
       daysOpen,
