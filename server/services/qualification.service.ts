@@ -1,5 +1,6 @@
 import { googleMapsService } from "./google-maps.service";
 import { censusService } from "./census.service";
+import { qualificationRulesService } from "./qualification-rules.service";
 import type {
   QualificationResult,
   BusinessTier,
@@ -265,13 +266,18 @@ export class QualificationService {
     const geocodeResult = await googleMapsService.geocodeAddress(address);
     const placeDetails = await googleMapsService.getPlaceDetails(geocodeResult.placeId);
 
-    const [populationDensity, nearbyBTMs] = await Promise.all([
+    const [populationDensity, nearbyBTMs, autoRejectedStates, proximityRule, kioskDensityRule, populationRule, ignoredCompetitors] = await Promise.all([
       censusService.getPopulationDensity(geocodeResult.zipCode),
       googleMapsService.searchNearbyBTMs(
         geocodeResult.location.lat,
         geocodeResult.location.lng,
-        settings.searchRadiusMiles
+        1.0
       ),
+      qualificationRulesService.getAutoRejectedStates(),
+      qualificationRulesService.getProximityRuleForDensity(populationDensity),
+      qualificationRulesService.getKioskDensityRuleForDensity(populationDensity),
+      qualificationRulesService.getPopulationRuleForState(geocodeResult.stateCode),
+      qualificationRulesService.getIgnoredCompetitors(),
     ]);
 
     const businessClassification = this.classifyBusinessType(
@@ -280,13 +286,116 @@ export class QualificationService {
     );
 
     const storeHours = this.parseStoreHours(placeDetails.openingHours?.weekdayText);
+
+    const reasons: string[] = [];
+
+    console.log(`\n=== Qualification Check for ${geocodeResult.formattedAddress} ===`);
+    console.log(`State: ${geocodeResult.stateCode} (${geocodeResult.stateName})`);
+    console.log(`Population Density: ${populationDensity} people/sq mi`);
+
+    // Check 1: Auto-rejected states
+    if (autoRejectedStates.has(geocodeResult.stateCode)) {
+      const rejectedState = autoRejectedStates.get(geocodeResult.stateCode);
+      console.log(`REJECTED: State is in auto-rejected list`);
+      reasons.push(`This state (${geocodeResult.stateName}) does not allow Bitcoin Depot kiosks`);
+    }
+
+    // Check 2: Population density and population minimums
+    if (populationRule) {
+      let effectiveDensityMin = populationRule.density_minimum;
+
+      if (qualificationRulesService.canUseLowerDensityMinimum(geocodeResult.stateCode, populationDensity, populationRule)) {
+        effectiveDensityMin = 300;
+        console.log(`Density minimum reduced to 300 for state with sufficient population`);
+      }
+
+      if (populationDensity < effectiveDensityMin) {
+        console.log(`REJECTED: Density ${populationDensity} below minimum ${effectiveDensityMin}`);
+        reasons.push(`population density too low (${populationDensity} vs ${effectiveDensityMin} required)`);
+      } else {
+        console.log(`PASS: Density meets minimum`);
+      }
+    }
+
+    // Check 3: Business type
+    if (businessClassification.tier === "unqualified") {
+      console.log(`REJECTED: Business type not qualified`);
+      reasons.push("business type not qualified");
+    } else {
+      console.log(`PASS: Business tier ${businessClassification.tier} is qualified`);
+    }
+
+    // Check 4: Store hours
+    if (!storeHours.meetsRequirements) {
+      console.log(`REJECTED: Store hours do not meet requirements (${storeHours.daysOpen} days, ${storeHours.averageHoursPerDay.toFixed(2)} hours/day)`);
+      reasons.push(`insufficient store hours (${storeHours.daysOpen} days open, ${storeHours.averageHoursPerDay.toFixed(1)} hrs/day vs 5+ days, 9+ hrs/day required)`);
+    } else {
+      console.log(`PASS: Store hours meet requirements`);
+    }
+
+    // Check 5: Bitcoin Depot Proximity (based on dynamic distance rule)
+    let requiredProximityDistance = 1.0;
+    if (proximityRule) {
+      requiredProximityDistance = qualificationRulesService.getRequiredProximityDistance(
+        proximityRule,
+        geocodeResult.stateCode
+      );
+      console.log(`Bitcoin Depot proximity requirement: ${requiredProximityDistance} miles`);
+    }
+
+    const bitcoinDepotNearby = nearbyBTMs.some(
+      (btm) => this.isNearbyBitcoinDepot(btm) && this.calculateDistance(geocodeResult.location, btm.coords) < requiredProximityDistance
+    );
+
+    if (bitcoinDepotNearby) {
+      console.log(`REJECTED: Bitcoin Depot found within ${requiredProximityDistance} miles`);
+      reasons.push(`existing Bitcoin Depot kiosk within ${requiredProximityDistance} miles`);
+    } else {
+      console.log(`PASS: No Bitcoin Depot kiosks within ${requiredProximityDistance} miles`);
+    }
+
+    // Check 6: Competitor in same store
+    const competitorInStore = nearbyBTMs.some(
+      (btm) => this.isCompetitorInStore(btm, ignoredCompetitors) && this.calculateDistance(geocodeResult.location, btm.coords) < 0.01
+    );
+
+    if (competitorInStore) {
+      console.log(`REJECTED: Competitor kiosk in same store`);
+      reasons.push("competitor kiosk already in same store");
+    } else {
+      console.log(`PASS: No competitor kiosks in same store`);
+    }
+
+    // Check 7: Kiosk density (total kiosks within 1 mile)
+    let maxKiosks = 2;
+    if (kioskDensityRule) {
+      maxKiosks = qualificationRulesService.getMaxKioskDensity(
+        kioskDensityRule,
+        geocodeResult.stateCode
+      );
+      console.log(`Max kiosks allowed within 1 mile: ${maxKiosks}`);
+    }
+
+    const totalKiosksWithinMile = nearbyBTMs.filter(
+      (btm) => this.calculateDistance(geocodeResult.location, btm.coords) < 1.0
+    ).length;
+
+    if (totalKiosksWithinMile > maxKiosks) {
+      console.log(`REJECTED: ${totalKiosksWithinMile} kiosks within 1 mile exceeds limit of ${maxKiosks}`);
+      reasons.push(`too many kiosks nearby (${totalKiosksWithinMile} found, max ${maxKiosks} allowed within 1 mile)`);
+    } else {
+      console.log(`PASS: ${totalKiosksWithinMile} kiosks within 1 mile (limit ${maxKiosks})`);
+    }
+
+    const qualified = reasons.length === 0;
+
     const btmProximity = this.analyzeBTMProximity(nearbyBTMs);
 
     const populationCheck = {
       zipCode: geocodeResult.zipCode,
       density: populationDensity,
       threshold: settings.minimumPopulationDensity,
-      meetsRequirement: populationDensity >= settings.minimumPopulationDensity,
+      meetsRequirement: !reasons.some(r => r.includes("density too low")),
     };
 
     const businessCheck = {
@@ -300,29 +409,10 @@ export class QualificationService {
         .slice(0, 5),
     };
 
-    const qualified =
-      populationCheck.meetsRequirement &&
-      btmProximity.meetsRequirement &&
-      businessCheck.meetsRequirement &&
-      storeHours.meetsRequirements;
-
     let summary = "";
     if (qualified) {
-      summary = `This location meets all requirements for Bitcoin ATM placement. ${businessCheck.tier === "tier1" ? "Tier 1" : "Tier 2"} business with ${populationCheck.density.toLocaleString()} people per sq mi, no existing Bitcoin Depot ATMs nearby, and adequate operating hours.`;
+      summary = `This location meets all requirements for Bitcoin ATM placement. ${businessCheck.tier === "tier1" ? "Tier 1" : "Tier 2"} business with ${populationCheck.density.toLocaleString()} people per sq mi, no Bitcoin Depot competition within ${requiredProximityDistance} miles, and adequate operating hours.`;
     } else {
-      const reasons = [];
-      if (!populationCheck.meetsRequirement) {
-        reasons.push("insufficient population density");
-      }
-      if (!btmProximity.meetsRequirement) {
-        reasons.push("existing Bitcoin Depot ATM nearby");
-      }
-      if (!businessCheck.meetsRequirement) {
-        reasons.push("business type not qualified");
-      }
-      if (!storeHours.meetsRequirements) {
-        reasons.push("inadequate store hours");
-      }
       summary = `This location does not qualify due to: ${reasons.join(", ")}.`;
     }
 
@@ -330,6 +420,8 @@ export class QualificationService {
       qualified,
       address,
       formattedAddress: geocodeResult.formattedAddress,
+      stateCode: geocodeResult.stateCode,
+      stateName: geocodeResult.stateName,
       location: geocodeResult.location,
       populationDensity: populationCheck,
       btmProximity,
@@ -338,6 +430,36 @@ export class QualificationService {
       summary,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  private isNearbyBitcoinDepot(btm: any): boolean {
+    const nameLower = btm.name.toLowerCase();
+    return nameLower.includes("bitcoin depot") || nameLower.includes("bitcoindepot");
+  }
+
+  private isCompetitorInStore(btm: any, ignoredCompetitors: Set<string>): boolean {
+    const nameLower = btm.name.toLowerCase();
+    if (ignoredCompetitors.has(nameLower)) {
+      return false;
+    }
+    return btm.types?.some((type: string) => type.toLowerCase().includes("atm")) ?? false;
+  }
+
+  private calculateDistance(
+    loc1: { lat: number; lng: number },
+    loc2: { lat: number; lng: number }
+  ): number {
+    const R = 3959;
+    const dLat = ((loc2.lat - loc1.lat) * Math.PI) / 180;
+    const dLng = ((loc2.lng - loc1.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((loc1.lat * Math.PI) / 180) *
+        Math.cos((loc2.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 }
 

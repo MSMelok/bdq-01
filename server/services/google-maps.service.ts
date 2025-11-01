@@ -10,6 +10,8 @@ interface GeocodeResult {
   };
   zipCode: string;
   placeId: string;
+  stateCode: string;
+  stateName: string;
 }
 
 interface PlaceDetails {
@@ -56,8 +58,16 @@ export class GoogleMapsService {
         component.types.includes("postal_code")
       );
 
+      const stateComponent = result.address_components.find((component: any) =>
+        component.types.includes("administrative_area_level_1")
+      );
+
       if (!zipCodeComponent?.long_name) {
         throw new Error("Could not determine ZIP code from address. Please include a ZIP code in your search.");
+      }
+
+      if (!stateComponent?.short_name) {
+        throw new Error("Could not determine state from address.");
       }
 
       return {
@@ -68,6 +78,8 @@ export class GoogleMapsService {
         },
         zipCode: zipCodeComponent.long_name,
         placeId: result.place_id,
+        stateCode: stateComponent.short_name,
+        stateName: stateComponent.long_name,
       };
     } catch (error: any) {
       if (error.message) {
@@ -130,7 +142,7 @@ export class GoogleMapsService {
     lat: number,
     lng: number,
     radiusMiles: number
-  ): Promise<Array<{ name: string; types: string[] }>> {
+  ): Promise<Array<{ name: string; types: string[]; coords: { lat: number; lng: number } }>> {
     try {
       const radiusMeters = radiusMiles * 1609.34;
       const response = await axios.get(
@@ -149,6 +161,10 @@ export class GoogleMapsService {
         return response.data.results.map((place: any) => ({
           name: place.name || "",
           types: place.types || [],
+          coords: {
+            lat: place.geometry?.location?.lat || 0,
+            lng: place.geometry?.location?.lng || 0,
+          },
         }));
       }
 

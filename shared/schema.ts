@@ -75,6 +75,8 @@ export const qualificationResultSchema = z.object({
     lat: z.number(),
     lng: z.number(),
   }),
+  stateCode: z.string(),
+  stateName: z.string(),
   populationDensity: populationDensitySchema,
   btmProximity: btmProximitySchema,
   businessType: businessTypeSchema,
