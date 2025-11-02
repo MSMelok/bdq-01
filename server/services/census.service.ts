@@ -3,8 +3,14 @@ import { supabase } from "../supabase";
 
 const CENSUS_API_KEY = process.env.CENSUS_API_KEY;
 
+export interface PopulationDensityResult {
+  population: number;
+  density: number;
+  landAreaSqMiles: number;
+}
+
 export class CensusService {
-  async getPopulationDensity(zipCode: string): Promise<number> {
+  async getPopulationDensity(zipCode: string): Promise<PopulationDensityResult> {
     if (!CENSUS_API_KEY) {
       throw new Error("Census API key is not configured. Please add CENSUS_API_KEY to your .env file.");
     }
@@ -94,7 +100,12 @@ export class CensusService {
 
       const density = Math.round(population / landAreaSqMiles);
       console.log(`Population density for ${zipCode}: ${population} people / ${landAreaSqMiles} sq mi = ${density} people/sq mi`);
-      return density;
+
+      return {
+        population,
+        density,
+        landAreaSqMiles,
+      };
     } catch (error: any) {
       throw new Error(
         `Failed to retrieve population density for ZIP code ${zipCode}: ${error.message}`

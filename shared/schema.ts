@@ -37,6 +37,7 @@ export type StoreHours = z.infer<typeof storeHoursSchema>;
 // Population density data
 export const populationDensitySchema = z.object({
   zipCode: z.string(),
+  population: z.number(),
   density: z.number(),
   threshold: z.number(),
   meetsRequirement: z.boolean(),

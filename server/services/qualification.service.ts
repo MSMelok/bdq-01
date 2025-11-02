@@ -266,8 +266,10 @@ export class QualificationService {
     const geocodeResult = await googleMapsService.geocodeAddress(address);
     const placeDetails = await googleMapsService.getPlaceDetails(geocodeResult.placeId);
 
-    const [populationDensity, nearbyBTMs, autoRejectedStates, proximityRule, kioskDensityRule, populationRule, ignoredCompetitors] = await Promise.all([
-      censusService.getPopulationDensity(geocodeResult.zipCode),
+    const populationDensityResult = await censusService.getPopulationDensity(geocodeResult.zipCode);
+    const populationDensity = populationDensityResult.density;
+
+    const [nearbyBTMs, autoRejectedStates, proximityRule, kioskDensityRule, populationRule, ignoredCompetitors] = await Promise.all([
       googleMapsService.searchNearbyBTMs(
         geocodeResult.location.lat,
         geocodeResult.location.lng,
@@ -393,6 +395,7 @@ export class QualificationService {
 
     const populationCheck = {
       zipCode: geocodeResult.zipCode,
+      population: populationDensityResult.population,
       density: populationDensity,
       threshold: settings.minimumPopulationDensity,
       meetsRequirement: !reasons.some(r => r.includes("density too low")),

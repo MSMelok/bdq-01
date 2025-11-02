@@ -30,9 +30,15 @@ export function PopulationDensityCard({ data }: PopulationDensityCardProps) {
 
       <div className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm text-muted-foreground">Current Density</span>
+          <span className="text-sm text-muted-foreground">Total Population</span>
+          <span className="text-lg font-semibold font-mono" data-testid="text-population-value">
+            {data.population.toLocaleString()}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm text-muted-foreground">Population Density</span>
           <span className="text-2xl font-semibold font-mono" data-testid="text-density-value">
-            {data.density.toLocaleString()}
+            {data.density.toLocaleString()} <span className="text-sm text-muted-foreground">/sq mi</span>
           </span>
         </div>
         <div className="flex items-baseline justify-between">
@@ -41,7 +47,7 @@ export function PopulationDensityCard({ data }: PopulationDensityCardProps) {
             {data.threshold.toLocaleString()}
           </span>
         </div>
-        
+
         <div className="space-y-2 pt-2">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div
