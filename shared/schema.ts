@@ -59,6 +59,7 @@ export type BtmProximity = z.infer<typeof btmProximitySchema>;
 export const businessTypeSchema = z.object({
   name: z.string(),
   category: z.string(),
+  matchedType: z.string(),
   tier: businessTierSchema,
   tierAmount: z.number().nullable(),
   meetsRequirement: z.boolean(),
@@ -78,6 +79,8 @@ export const qualificationResultSchema = z.object({
   }),
   stateCode: z.string(),
   stateName: z.string(),
+  stateAutoRejected: z.boolean(),
+  stateRejectionReason: z.string().nullable(),
   populationDensity: populationDensitySchema,
   btmProximity: btmProximitySchema,
   businessType: businessTypeSchema,

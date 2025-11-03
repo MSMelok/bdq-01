@@ -63,7 +63,7 @@ export class QualificationService {
   private classifyBusinessType(
     name: string,
     types: string[]
-  ): { tier: BusinessTier; tierAmount: number | null; category: string } {
+  ): { tier: BusinessTier; tierAmount: number | null; category: string; matchedType: string } {
     const nameLower = name.toLowerCase();
     const typesLower = types.map((t) => t.toLowerCase());
 
@@ -73,6 +73,7 @@ export class QualificationService {
           tier: "tier1",
           tierAmount: 300,
           category: this.formatCategory(tier1Type),
+          matchedType: tier1Type,
         };
       }
     }
@@ -83,6 +84,7 @@ export class QualificationService {
           tier: "tier2",
           tierAmount: 200,
           category: this.formatCategory(keyword),
+          matchedType: keyword,
         };
       }
     }
@@ -93,6 +95,7 @@ export class QualificationService {
           tier: "tier2",
           tierAmount: 200,
           category: this.formatCategory(tier2Type),
+          matchedType: tier2Type,
         };
       }
     }
@@ -101,6 +104,7 @@ export class QualificationService {
       tier: "unqualified",
       tierAmount: null,
       category: types.length > 0 ? this.formatCategory(types[0]) : "Unknown",
+      matchedType: types.length > 0 ? types[0] : "unknown",
     };
   }
 
@@ -290,6 +294,8 @@ export class QualificationService {
     const storeHours = this.parseStoreHours(placeDetails.openingHours?.weekdayText);
 
     const reasons: string[] = [];
+    let stateAutoRejected = false;
+    let stateRejectionReason: string | null = null;
 
     console.log(`\n=== Qualification Check for ${geocodeResult.formattedAddress} ===`);
     console.log(`State: ${geocodeResult.stateCode} (${geocodeResult.stateName})`);
@@ -299,6 +305,8 @@ export class QualificationService {
     if (autoRejectedStates.has(geocodeResult.stateCode)) {
       const rejectedState = autoRejectedStates.get(geocodeResult.stateCode);
       console.log(`REJECTED: State is in auto-rejected list`);
+      stateAutoRejected = true;
+      stateRejectionReason = rejectedState.reason;
       reasons.push(`This state (${geocodeResult.stateName}) does not allow Bitcoin Depot kiosks`);
     }
 
@@ -404,6 +412,7 @@ export class QualificationService {
     const businessCheck = {
       name: placeDetails.name,
       category: businessClassification.category,
+      matchedType: businessClassification.matchedType,
       tier: businessClassification.tier,
       tierAmount: businessClassification.tierAmount,
       meetsRequirement: businessClassification.tier !== "unqualified",
@@ -425,6 +434,8 @@ export class QualificationService {
       formattedAddress: geocodeResult.formattedAddress,
       stateCode: geocodeResult.stateCode,
       stateName: geocodeResult.stateName,
+      stateAutoRejected,
+      stateRejectionReason,
       location: geocodeResult.location,
       populationDensity: populationCheck,
       btmProximity,

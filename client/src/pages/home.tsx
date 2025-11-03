@@ -80,6 +80,10 @@ export default function Home() {
               <QualificationSummary
                 qualified={result.qualified}
                 summary={result.summary}
+                stateCode={result.stateCode}
+                stateName={result.stateName}
+                stateAutoRejected={result.stateAutoRejected}
+                stateRejectionReason={result.stateRejectionReason}
               />
 
               <div className="grid gap-6 lg:grid-cols-3 md:grid-cols-2">

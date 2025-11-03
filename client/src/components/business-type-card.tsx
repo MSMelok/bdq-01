@@ -44,6 +44,11 @@ export function BusinessTypeCard({ data }: BusinessTypeCardProps) {
           <p className="text-base font-medium" data-testid="text-business-name">{data.name}</p>
         </div>
 
+        <div>
+          <p className="text-sm text-muted-foreground mb-2">Matched Type</p>
+          <p className="text-base font-semibold font-mono" data-testid="text-matched-type">{data.matchedType}</p>
+        </div>
+
         <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
           <div className="flex items-center gap-2">
             <Badge className={`${tierInfo.color} border`} data-testid="badge-tier">
