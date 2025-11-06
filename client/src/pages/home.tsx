@@ -53,7 +53,7 @@ export default function Home() {
               Location Qualification Tool
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Instantly determine if a retail location qualifies for Bitcoin ATM placement
+              Instantly determine if a location qualifies for Bitcoin ATM placement
             </p>
           </div>
 
